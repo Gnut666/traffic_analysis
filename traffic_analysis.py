@@ -1,13 +1,27 @@
 #!/usr/bin/python3
+import os.path
+import sys
 
-class Test:
-	#inin
-	def f(self):
-		return "hell no";
+#loading class
+class Load_pcap:
+	
+		#init exit program if file "filename" not exist
+		def __init__( self, filename ):
+			if  os.path.isfile( filename ): 
+				self.filename = filename;
+			else:
+				sys.exit(1);
+		def pr( self ):
+			return os.path.isfile( self.filename );
+		
+		
 
-a = Test();
-print(a.f());
-#nacteni
+# main
+##TD nacteni jmena souboru
+name="out.pcap";
+a = Load_pcap(name);
+print(a.pr());
+
 
 	#loop to end of file
 	##? must know size
