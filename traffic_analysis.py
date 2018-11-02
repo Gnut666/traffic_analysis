@@ -7,20 +7,26 @@ class Load_pcap:
 	
 		#init exit program if file "filename" not exist
 		def __init__( self, filename ):
-			if  os.path.isfile( filename ): 
-				self.filename = filename;
-			else:
-				sys.exit(1);
+			self.filename = filename;
 		def pr( self ):
 			return os.path.isfile( self.filename );
 		
 		
 
 # main
-##TD nacteni jmena souboru
-name="out.pcap";
-a = Load_pcap(name);
-print(a.pr());
+## nacteni jmena souboru a jeho kontrola
+if len( sys.argv ) < 2:
+	print ( 'no file to process' );
+	sys.exit( 1 );
+
+infname = sys.argv[1];
+
+if  not os.access( infname, os.R_OK ):
+	print ( 'non readable/non exits file' );
+	sys.exit( 1 );
+
+a = Load_pcap( infname );
+print( a.pr() );
 
 
 	#loop to end of file
