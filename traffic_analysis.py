@@ -1,18 +1,17 @@
 #!/usr/bin/python3
 import os.path
 import sys
+import binascii
 
 #loading class
 class Load_pcap:
 	
 		#init exit program if file "filename" not exist
 		def __init__( self, filename ):
-			self.filename = filename;
-		def pr( self ):
-			return os.path.isfile( self.filename );
-		
-		
-
+			self.open_file = open( filename, 'rb')
+		def ld_byte( self ): 
+			return self.open_file.read(2);	
+	
 # main
 ## nacteni jmena souboru a jeho kontrola
 if len( sys.argv ) < 2:
@@ -26,12 +25,10 @@ if  not os.access( infname, os.R_OK ):
 	sys.exit( 1 );
 
 a = Load_pcap( infname );
-print( a.pr() );
+
+print ( binascii.hexlify(a.ld_byte()) );
 
 
-	#loop to end of file
-	##? must know size
-	#save each packet to array
 
 #processing
 	#loop to trough array
