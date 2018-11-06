@@ -3,30 +3,83 @@ import os.path
 import sys
 import binascii
 import abc
+import math
 
 #loading class
-class Load( abc.ABC ):
+class Load_main( abc.ABC ):
 	@abc.abstractmethod
-	def ld_byte( self, nbyte ):
-		pass;
-	def cut_head_gl( self ):
-		pass;
-class Load_pcap( Load ):
-	
-	#init exit program if file "filename" not exist
 	def __init__( self, filename ):
-		self.open_file = open( filename, 'rb');
-		self.order = self.cut_head_gl();
-	#todo destruktor
-	def ld_byte( self, nbyte ): 
-		return self.open_file.read( nbyte );
-	def cut_head_gl( self ):
+		pass;
+	@abc.abstractmethod
+	def __del__( self ):
+		pass;
+	@abc.abstractmethod
+	def _ld_byte( self, nbyte ):
+		pass;
+	@abc.abstractmethod
+	def _cut_head_gl( self ):
+		pass;
+	@abc.abstractmethod
+	def _ld_head( self ):
+		pass;
+	@abc.abstractmethod
+	def ld_packet( self ):
+		pass;
+class Load_pcap( Load_main ):
+	def __init__( self, filename ):
+		self._open_file = open( filename, 'rb');
+		self._size = os.stat(filename).st_size;
+		self._order = self._cut_head_gl();
+		self._flag_eof = 0;	
+
+	def __del__( self ):
+		self._open_file.close();
+
+	def _ld_byte( self, nbyte ):
+		#load nbyte number of bytes
+		if ( self._size - nbyte ) < 0:
+			print ('unexpected end of file');
+			sys.exit( 2 );
+		elif ( self._size - nbyte ) == 0:
+			self._flag_eof = 1;
+		self._size -= nbyte;
+		return self._open_file.read( nbyte );
+
+	def _cut_head_gl( self ):
+		#cut global header from pcap file + set byte order
 		#byte order
-		num1 = self.ld_byte( 2 );
-		num2 = self.ld_byte( 2 );
-		tmp = self.ld_byte( 20 );
-		return num1 < num2;
-	
+		num1 = self._ld_byte( 2 );
+		num2 = self._ld_byte( 2 );
+		#header remains
+		tmp = self._ld_byte( 20 );
+		if num1 < num2:
+			self._order = 0;
+		else:
+			self._order = 1;
+		return 1;
+	def _ld_head( self ):
+		#read packet header 
+		tmp = self._ld_byte( 8 );
+		oc1 = self._ld_byte( 2 );
+		oc2 = self._ld_byte( 2 );
+		lng1 = self._ld_byte( 2 );
+		lng2 = self._ld_byte( 2 );
+		#debug num octtets x actual lenght
+		if ( oc1 != lng1 ) or ( oc2 != lng2 ):
+			print ('number of octets != actual lenght ');
+		if ( self._order ):
+			print ( map( ord,lng2 )[0] );
+			return 'debug';
+			#return ( map( ord,lng2 ) * math.pow(2,8) + int( lng1,2 ));
+		else:
+			#return ( lng1 * math.pow(2,8) + lng2 );
+			return 'debug';
+	def ld_packet( self ):
+		print ( self._ld_head() );
+		#return self._ld_byte( self._ld_head() );
+		return 'debug'		
+
+
 # main
 ## nacteni jmena souboru a jeho kontrola
 if len( sys.argv ) < 2:
@@ -34,8 +87,8 @@ if len( sys.argv ) < 2:
 	sys.exit( 1 );
 
 infname = sys.argv[1];
-
-if  not os.access( infname, os.R_OK ):
+# exit program if file "filename" not exist
+if not os.access( infname, os.R_OK ):
 	print ( 'non readable/non exits file' );
 	sys.exit( 1 );
 
@@ -43,8 +96,9 @@ if  not os.access( infname, os.R_OK ):
 a = Load_pcap( infname );
 b = Load_pcap( infname );
 
-print( binascii.hexlify(a.ld_byte( 1 )) );
-print( binascii.hexlify(a.ld_byte( 1 )) );
+
+print( a.ld_packet() );
+#print( binascii.hexlify(a._ld_byte( 1 )) );
 
 
 
