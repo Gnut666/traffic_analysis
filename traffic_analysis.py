@@ -5,6 +5,10 @@ import binascii
 import abc
 import math
 
+def num_bin( byte_num ):
+	#transform from bytes( little endian ) to int
+	return int.from_bytes( byte_num, byteorder = 'little' );
+
 #loading class
 class Load_main( abc.ABC ):
 	@abc.abstractmethod
@@ -28,8 +32,11 @@ class Load_main( abc.ABC ):
 class Load_pcap( Load_main ):
 	def __init__( self, filename ):
 		self._open_file = open( filename, 'rb');
+		#save size of file
 		self._size = os.stat(filename).st_size;
+		#save byte arangement in file
 		self._order = self._cut_head_gl();
+		#flag of end of file
 		self._flag_eof = 0;	
 
 	def __del__( self ):
@@ -41,6 +48,7 @@ class Load_pcap( Load_main ):
 			print ('unexpected end of file');
 			sys.exit( 2 );
 		elif ( self._size - nbyte ) == 0:
+			#normal end of file
 			self._flag_eof = 1;
 		self._size -= nbyte;
 		return self._open_file.read( nbyte );
@@ -68,16 +76,12 @@ class Load_pcap( Load_main ):
 		if ( oc1 != lng1 ) or ( oc2 != lng2 ):
 			print ('number of octets != actual lenght ');
 		if ( self._order ):
-			print ( map( ord,lng2 )[0] );
-			return 'debug';
-			#return ( map( ord,lng2 ) * math.pow(2,8) + int( lng1,2 ));
+			return int( num_bin( lng2 ) * math.pow(2,8) + num_bin( lng1 ));
 		else:
-			#return ( lng1 * math.pow(2,8) + lng2 );
-			return 'debug';
+			return int( num_bin( lng1 ) * math.pow(2,8) + num_bin( lng2 ));
 	def ld_packet( self ):
-		print ( self._ld_head() );
-		#return self._ld_byte( self._ld_head() );
-		return 'debug'		
+		# returt whole packet
+		return self._ld_byte( self._ld_head() );		
 
 
 # main
@@ -94,10 +98,11 @@ if not os.access( infname, os.R_OK ):
 
 ##------debug--------------
 a = Load_pcap( infname );
-b = Load_pcap( infname );
+#b = Load_pcap( infname );
 
+f = open( 'zz.txt', 'wb' );
+f.write( a.ld_packet() );
 
-print( a.ld_packet() );
 #print( binascii.hexlify(a._ld_byte( 1 )) );
 
 
