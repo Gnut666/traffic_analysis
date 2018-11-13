@@ -11,20 +11,42 @@ def num_bin( byte_num, endi ):
 		return int.from_bytes( byte_num, byteorder = 'little' );
 	else:
 		return int.from_bytes( byte_num, byteorder = 'big' );
+
+def two_byte_num( part1, part2 ):
+	# transform 2 byte into one, 
+	# part1 XX__
+	# part2 __XX
+	return ( ( part1 * 256 ) + part2 );
+
+def byte_part( byte, part ):
+	# return half byte
+	# 1 - first, 2 - second, other - error
+	if part == 1:
+		return byte >> 4;
+	elif part == 2:
+		return byte & 15;
+	else:
+		print( 'wrong "byte_part" function call' );
+		sys.exit( 3 );
+
 #loading class
 class Load_main( abc.ABC ):
 	@abc.abstractmethod
 	def __init__( self, filename ):
 		pass;
+
 	@abc.abstractmethod
 	def __del__( self ):
 		pass;
+
 	@abc.abstractmethod
 	def get_packet( self ):
 		pass;
+
 	@abc.abstractmethod
 	def get_last_size( self ):
 		pass;
+
 	@abc.abstractmethod
 	def get_flag_eof( self ):
 		pass;
@@ -97,9 +119,11 @@ class  Processing_main( abc.ABC ):
 	@abc.abstractmethod
 	def __init__( self ):
 		pass;
+
 	@abc.abstractmethod
 	def __del__( self ):
 		pass;
+
 	@abc.abstractmethod
 	def write_report( self ):
 		pass;
@@ -116,23 +140,69 @@ class Processing_pcap( Processing_main ):
 			print ( 'non readable/non exits file' );
 			sys.exit( 1 );
 		self.pcap = Load_pcap( filename );
+		self.last_protocol = 'null';
+		self.tcp_conections = 0;
+		self.adr_source='null';
+		self.adr_desti='null';
 
 	def __del__( self ):
 		del self.pcap;
+
 	def _proc_packet( self ):
-		self.pcap.get_packet();
-		#TODO protocool, address... 
-		pass;
+		a = list( self.pcap.get_packet() );
+		# adresess
+		self.adr_source = str( a[ 26 ] ) +'.'+ str( a[ 27 ] ) +'.'+ str( a[ 28 ] ) +'.'+  str( a[ 29 ] );
+		self.adr_dest = str( a[ 30 ] ) +'.'+ str( a[ 31 ] ) +'.'+ str( a[ 32 ] ) +'.'+  str( a[ 33 ] );
+		#TODO pouzite protokoly
+		if  two_byte_num( a[ 12 ], a[ 13 ] ) == 2048 and byte_part( a[ 14 ], 1 ) == 4 :
+			# here is ipv4
+			if a[ 23 ] == 1:
+				self.last_protocol = 'icmp';
+			elif a[ 23 ] ==  6:
+				self.last_protocol = 'tcp';
+				# if flag ACK and SYN is set it is new connection
+				if a[ ( byte_part( a[ 14 ], 2 ) * 4 ) + 27 ] == 18:
+					self.tcp_conections += 1;
+			elif a[ 23 ] == 17:
+				self.last_protocol = 'udp';
+			else:
+				print( 'warning: odd byte' );
+				return 0;
+			
+			
+			#print('a:',  byte_part( a[ 14 ], 2 ));
+			#print( ( byte_part( a[ 14 ], 2 ) * 4 ) + 27 );
+			#print( a[ ( byte_part( a[ 14 ], 2 ) * 4 ) + 27 ]  );
+			#TODO protocol, address... 
+			return 1;
+		#TODO arp 
+		else:
+			print( 'warning: odd byte' );
+			return 0;
+
 	def write_report( self ):
 		size_min = 0;
 		size_max = 0;
 		#total size
 		size_all = 0;
 		packet_count = 0;
+		packet_odd = 0;
+		kByte_count = { "tcp":0, "icmp":0, "udp":0, "arp":0 };
+		com_sum = {};
 		while self.pcap.get_flag_eof():
-			self._proc_packet();
-			#print ( self.pcap.get_last_size() );
+			if self._proc_packet() == 0:
+				packet_odd += 1;
+				continue;
+			
+			#pelf.last_protocol ]:int ( self.pcap.get_last_size() );
 			last_size = self.pcap.get_last_size();
+			kByte_count[ self.last_protocol ] += last_size;
+			# comunication summary listing
+			com_key = self.adr_source +' | '+ self.adr_dest +' | '+ self.last_protocol +' | '
+			if com_key in com_sum:
+				com_sum[ com_key ] += last_size;
+			else:
+				com_sum[ com_key ] = last_size;
 			packet_count += 1;
 			if ( packet_count == 1 ):
 				size_max = last_size;
@@ -142,7 +212,14 @@ class Processing_pcap( Processing_main ):
 				size_max = last_size;
 			if ( size_min > last_size ):
 				size_min = last_size;
-		print ( size_min, size_max, size_all /  packet_count );
+
+		for a in com_sum:
+			print ( a, com_sum[ a ] );
+		for i in kByte_count:
+			print ( i, kByte_count[ i ] );
+		print ( 'odd:',packet_odd );
+		#TODO packet_count not divine 0
+		print ( size_min, size_max, size_all / packet_count );
 		return 1;
 
         #sum,count min, max - 1st flag
