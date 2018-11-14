@@ -54,29 +54,39 @@ class Load_main( abc.ABC ):
 
 class Load_pcap( Load_main ):
 	def __init__( self, filename ):
-		self._open_file = open( filename, 'rb' );
+		# exit program if file "filename" not exist
+		try:
+			self.open_file = open( filename, 'rb' );
+		except PermissionError:
+			print ( 'non readable file' );
+			sys.exit( 1 );
+		except OSError:
+			print ( 'non exist file' );
+			sys.exit( 5 );
 		#save size of file
-		self._size = os.stat(filename).st_size;
+		self.size = os.stat(filename).st_size;
 		#save byte arangement in file
-		self._order = self._cut_head_gl();
+		self.order = self._cut_head_gl();
 		#flag of end of file
 		self.flag_eof = 1;
 		#set last size
-		self._last_size = 0;
+		self.last_size = 0;
 
 	def __del__( self ):
-		self._open_file.close();
-
+		try:
+			self.open_file.close();
+		except AttributeError:
+			pass;		 	
 	def _ld_byte( self, nbyte ):
 		#load nbyte number of bytes
-		if ( self._size - nbyte ) < 0:
+		if ( self.size - nbyte ) < 0:
 			print ( 'unexpected end of file' );
 			sys.exit( 2 );
-		elif ( self._size - nbyte ) == 0:
+		elif ( self.size - nbyte ) == 0:
 			#normal end of file
 			self.flag_eof = 0;
-		self._size -= nbyte;
-		return self._open_file.read( nbyte );
+		self.size -= nbyte;
+		return self.open_file.read( nbyte );
 
 	def _cut_head_gl( self ):
 		#cut global header from pcap file + set byte order
@@ -98,17 +108,17 @@ class Load_pcap( Load_main ):
 		#debug num octtets x actual lenght
 		if ( oc != lng ):
 			print ( 'warning number of octets != actual lenght' );
-		if ( self._order ):
+		if ( self.order ):
 			return int( num_bin( lng, 1 ));
 		else:
 			return int( num_bin( lng, 0 ));
 	def get_packet( self ):
-		self._last_size = self._ld_head();
+		self.last_size = self._ld_head();
 		# returt whole packet
-		return self._ld_byte( self._last_size );
+		return self._ld_byte( self.last_size );
 				
 	def get_last_size( self ):
-		return self._last_size;
+		return self.last_size;
 
 	def get_flag_eof( self ):
                 return self.flag_eof;
@@ -129,31 +139,43 @@ class  Processing_main( abc.ABC ):
 		pass;
 
 class Processing_pcap( Processing_main ):
+	
 	def __init__( self ):
+		self.var_set_pcap = 0;
 		## load file name and make control
 		if len( sys.argv ) < 2:
 			print ( 'no file to process' );
 			sys.exit( 1 );
 		filename = sys.argv[ 1 ];
-		# exit program if file "filename" not exist
-		if not os.access( filename, os.R_OK ):
-			print ( 'non readable/non exits file' );
-			sys.exit( 1 );
-		self.pcap = Load_pcap( filename );
+
+		self.pcap = Load_pcap( filename );		
+		## open output file for write + tests
+		self.output = self._open_output( filename );
+
 		self.last_protocol = 'null';
-		self.tcp_conections = 0;
-		self.adr_source='null';
-		self.adr_desti='null';
+		self.tcp_connections = 0;
+		self.adr_source = 'null';
+		self.adr_desti = 'null';
 
 	def __del__( self ):
-		del self.pcap;
+		if self.var_set_pcap:
+			del self.pcap;
+	def _open_output( self, filename ):
+		try:
+			output = filename.split('.')[ 0 ] + '_out.txt';
+			return open( output, 'w' );
+		except PermissionError:
+			print ( 'can not make output file' );
+			sys.exit( 4 );
+		except OSError:
+			print ( 'disk full' );
+			sys.exit( 6 );
 
 	def _proc_packet( self ):
 		a = list( self.pcap.get_packet() );
 		# adresess
 		self.adr_source = str( a[ 26 ] ) +'.'+ str( a[ 27 ] ) +'.'+ str( a[ 28 ] ) +'.'+  str( a[ 29 ] );
 		self.adr_dest = str( a[ 30 ] ) +'.'+ str( a[ 31 ] ) +'.'+ str( a[ 32 ] ) +'.'+  str( a[ 33 ] );
-		#TODO pouzite protokoly
 		if  two_byte_num( a[ 12 ], a[ 13 ] ) == 2048 and byte_part( a[ 14 ], 1 ) == 4 :
 			# here is ipv4
 			if a[ 23 ] == 1:
@@ -162,20 +184,16 @@ class Processing_pcap( Processing_main ):
 				self.last_protocol = 'tcp';
 				# if flag ACK and SYN is set it is new connection
 				if a[ ( byte_part( a[ 14 ], 2 ) * 4 ) + 27 ] == 18:
-					self.tcp_conections += 1;
+					self.tcp_connections += 1;
 			elif a[ 23 ] == 17:
 				self.last_protocol = 'udp';
 			else:
 				print( 'warning: odd byte' );
 				return 0;
-			
-			
-			#print('a:',  byte_part( a[ 14 ], 2 ));
-			#print( ( byte_part( a[ 14 ], 2 ) * 4 ) + 27 );
-			#print( a[ ( byte_part( a[ 14 ], 2 ) * 4 ) + 27 ]  );
-			#TODO protocol, address... 
 			return 1;
-		#TODO arp 
+		elif two_byte_num( a[ 12 ], a[ 13 ] ) == 2054:
+			#arp
+			self.last_protocol = 'arp';
 		else:
 			print( 'warning: odd byte' );
 			return 0;
@@ -188,7 +206,9 @@ class Processing_pcap( Processing_main ):
 		packet_count = 0;
 		packet_odd = 0;
 		kByte_count = { "tcp":0, "icmp":0, "udp":0, "arp":0 };
+		#tcp comunication summary
 		com_sum = {};
+
 		while self.pcap.get_flag_eof():
 			if self._proc_packet() == 0:
 				packet_odd += 1;
@@ -213,43 +233,37 @@ class Processing_pcap( Processing_main ):
 			if ( size_min > last_size ):
 				size_min = last_size;
 
-		for a in com_sum:
-			print ( a, com_sum[ a ] );
+		#TODO k bytes
+		self.output.write( '# traffic analysis report\n' );
+		self.output.write( '# ethernet frame size( minimum, maximum, average)\n' );
+		self.output.write( '<frame_size>\n' );
+		self.output.write( 'min' + str( size_min ) + '\n' );
+		self.output.write( 'max' + str( size_max ) + '\n' );
+		if  packet_count:
+			self.output.write( 'avr 0\n' );
+		else:
+			self.output.write( 'avr' + str( size_all / packet_count ) + '\n' );
+
+
+		self.output.write( '# (k)bytes in each protocol\n' );	
+		self.output.write( '<protocol_usage>\n' );
 		for i in kByte_count:
-			print ( i, kByte_count[ i ] );
-		print ( 'odd:',packet_odd );
-		#TODO packet_count not divine 0
-		print ( size_min, size_max, size_all / packet_count );
+			self.output.write( str( i ) + str( kByte_count[ i ] ) + '\n' );
+
+		self.output.write( '<dump_stats>\n' );
+		self.output.write( 'odd' + str( packet_odd ) + '\n');
+		self.output.write( 'tcp_connections' + str( self.tcp_connections ) + '\n')
+
+		self.output.write( '# summary of communicating IP addres through each protocol\n' );
+		self.output.write( '# sending IP | reciever IP | protocol | amount of data (k)B\n' );
+		self.output.write( '<com_sum>\n' );
+		for a in com_sum:
+                        self.output.write( str( a ) +  str( com_sum[ a ] ) + '\n' );
+
+
 		return 1;
-
-        #sum,count min, max - 1st flag
-        #protocol, data -> protocol data
-        #asoc array(ipI,ipO,prot):data count
-
-
-        #array end
-        # average(sum,count)
-	
-
-
-
 ##------main------------
 
 a = Processing_pcap();
-
-##------debug--------------
-
-#b = Load_pcap( infname );
-
-a.write_report();
-#print ( a.get_last_size());
-
-#print ( a._ld_head() );
-#f = open( 'zz.txt', 'wb' );
-#f.write( a.ld_packet() );
-#print( binascii.hexlify(a._ld_byte( 1 )) );
-
-
-
-#vystup
-
+if a.write_report():
+	sys.exit(0);
