@@ -230,9 +230,18 @@ class Processing_pcap( Processing_main ):
 			if self._proc_packet() == 0:
 				packet_odd += 1;
 				continue;
-			
-			#pelf.last_protocol ]:int ( self.pcap.get_last_size() );
+			#min, max, all, count	
 			last_size = self.pcap.get_last_size();
+			if ( packet_count == 1 ):
+				size_max = last_size;
+				size_min = last_size;
+			if ( size_max < last_size ):
+				size_max = last_size;
+			if ( size_min > last_size ):
+				size_min = last_size;
+			size_all += last_size;
+			packet_count += 1;
+			#protocol size
 			protocol_BCount[ self.last_protocol ] += last_size;
 			# comunication summary listing
 			com_key = self.adr_source +' | '+ self.adr_dest +' | '+ self.last_protocol +' | '
@@ -240,19 +249,10 @@ class Processing_pcap( Processing_main ):
 				com_sum[ com_key ] += last_size;
 			else:
 				com_sum[ com_key ] = last_size;
-			packet_count += 1;
-			if ( packet_count == 1 ):
-				size_max = last_size;
-				size_min = last_size;
-			size_all += last_size;
-			if ( size_max < last_size ):
-				size_max = last_size;
-			if ( size_min > last_size ):
-				size_min = last_size;
 
 		# write to file
 		self.output.write( '# traffic analysis report\n' );
-		self.output.write( '# ethernet frame size( minimum, maximum, average)\n' );
+		self.output.write( '# ethernet frame size( minimum, maximum, average )\n' );
 		self.output.write( '<frame_size>\n' );
 		self.output.write( 'min ' + self._kbyte_conver( size_min ) + '\n' );
 		self.output.write( 'max ' + self._kbyte_conver( size_max ) + '\n' );
@@ -270,7 +270,7 @@ class Processing_pcap( Processing_main ):
 		self.output.write( 'odd_packets ' + str( packet_odd ) + '\n');
 		self.output.write( 'tcp_connections ' + str( self.tcp_connections ) + '\n')
 
-		self.output.write( '# summary of communicating IP addres through each protocol\n' );
+		self.output.write( '# summary of communicating IP address through each protocol\n' );
 		self.output.write( '# sending IP | receiver IP | protocol | amount of data (k)B\n' );
 		self.output.write( '<com_sum>\n' );
 		for a in com_sum:
