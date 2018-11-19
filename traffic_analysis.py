@@ -195,7 +195,7 @@ class Processing_pcap( Processing_main ):
 			elif packet[ 23 ] == 17:
 				self.last_protocol = 'udp';
 			else:
-				print( 'warning: odd byte' );
+				print( 'warning: odd packet' );
 				return 0;
 			return 1;
 		elif two_byte_num( packet[ 12 ], packet[ 13 ] ) == 2054:
@@ -203,7 +203,7 @@ class Processing_pcap( Processing_main ):
 			self.last_protocol = 'arp';
 			return 1
 		else:
-			print( 'warning: odd byte' );
+			print( 'warning: odd packet' );
 			return 0;
 
 	def _kbyte_conver( self, byte ):
@@ -222,7 +222,7 @@ class Processing_pcap( Processing_main ):
 		size_all = 0;
 		packet_count = 0;
 		packet_odd = 0;
-		kByte_count = { "tcp":0, "icmp":0, "udp":0, "arp":0 };
+		protocol_BCount = { "tcp":0, "icmp":0, "udp":0, "arp":0 };
 		#tcp comunication summary
 		com_sum = {};
 
@@ -233,7 +233,7 @@ class Processing_pcap( Processing_main ):
 			
 			#pelf.last_protocol ]:int ( self.pcap.get_last_size() );
 			last_size = self.pcap.get_last_size();
-			kByte_count[ self.last_protocol ] += last_size;
+			protocol_BCount[ self.last_protocol ] += last_size;
 			# comunication summary listing
 			com_key = self.adr_source +' | '+ self.adr_dest +' | '+ self.last_protocol +' | '
 			if com_key in com_sum:
@@ -263,15 +263,15 @@ class Processing_pcap( Processing_main ):
 
 		self.output.write( '# (k) bytes in each protocol\n' );	
 		self.output.write( '<protocol_usage>\n' );
-		for i in kByte_count:
-			self.output.write( str( i ) + ' ' + self._kbyte_conver( kByte_count[ i ] ) + '\n' );
+		for i in protocol_BCount:
+			self.output.write( str( i ) + ' ' + self._kbyte_conver( protocol_BCount[ i ] ) + '\n' );
 
 		self.output.write( '<dump_stats>\n' );
-		self.output.write( 'odd ' + str( packet_odd ) + '\n');
+		self.output.write( 'odd_packets ' + str( packet_odd ) + '\n');
 		self.output.write( 'tcp_connections ' + str( self.tcp_connections ) + '\n')
 
 		self.output.write( '# summary of communicating IP addres through each protocol\n' );
-		self.output.write( '# sending IP | reciever IP | protocol | amount of data (k)B\n' );
+		self.output.write( '# sending IP | receiver IP | protocol | amount of data (k)B\n' );
 		self.output.write( '<com_sum>\n' );
 		for a in com_sum:
                         self.output.write( str( a ) +  self._kbyte_conver( com_sum[ a ] ) + '\n' );
