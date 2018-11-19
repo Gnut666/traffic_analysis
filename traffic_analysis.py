@@ -179,7 +179,7 @@ class Processing_pcap( Processing_main ):
 	def _proc_packet( self ):
 		packet = list( self.pcap.get_packet() );
 
-		# adresess
+		# addresses
 		self.adr_source = str( packet[ 26 ] ) +'.'+ str( packet[ 27 ] ) +'.'+ str( packet[ 28 ] ) +'.'+  str( packet[ 29 ] );
 		self.adr_dest = str( packet[ 30 ] ) +'.'+ str( packet[ 31 ] ) +'.'+ str( packet[ 32 ] ) +'.'+  str( packet[ 33 ] );
 
@@ -267,8 +267,8 @@ class Processing_pcap( Processing_main ):
 			self.output.write( str( i ) + ' ' + self._kbyte_conver( protocol_BCount[ i ] ) + '\n' );
 
 		self.output.write( '<dump_stats>\n' );
-		self.output.write( 'odd_packets ' + str( packet_odd ) + '\n');
-		self.output.write( 'tcp_connections ' + str( self.tcp_connections ) + '\n')
+		self.output.write( 'odd_packets ' + str( packet_odd ) + '\n' );
+		self.output.write( 'tcp_connections ' + str( self.tcp_connections ) + '\n' )
 
 		self.output.write( '# summary of communicating IP address through each protocol\n' );
 		self.output.write( '# sending IP | receiver IP | protocol | amount of data (k)B\n' );
@@ -281,4 +281,4 @@ class Processing_pcap( Processing_main ):
 
 proc = Processing_pcap();
 if proc.write_report():
-	sys.exit(0);
+	sys.exit( 0 );
