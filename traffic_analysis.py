@@ -148,11 +148,15 @@ class Processing_pcap( Processing_main ):
 		if len( sys.argv ) < 2:
 			print ( 'no file to process' );
 			sys.exit( 1 );
+		if len( sys.argv ) < 3:
+			print ( 'no output file specified' );
+			sys.exit( 1 );
+
 		filename = sys.argv[ 1 ];
 		self.pcap = Load_pcap( filename );		
 		
 		## open output file for write + tests
-		self.output = self._open_output( filename );
+		self.output = self._open_output( sys.argv[ 2 ] );
 
 		self.last_protocol = 'null';
 		self.tcp_connections = 0;
@@ -165,9 +169,8 @@ class Processing_pcap( Processing_main ):
 			self.output.close();
 		except AttributeError:
 			pass;
-	def _open_output( self, filename ):
+	def _open_output( self, output ):
 		try:
-			output = filename.split('.')[ 0 ] + '_out.txt';
 			return open( output, 'w' );
 		except PermissionError:
 			print ( 'can not make output file' );
