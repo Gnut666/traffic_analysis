@@ -179,10 +179,6 @@ class Processing_pcap( Processing_main ):
 	def _proc_packet( self ):
 		packet = list( self.pcap.get_packet() );
 
-		# addresses
-		self.adr_source = str( packet[ 26 ] ) +'.'+ str( packet[ 27 ] ) +'.'+ str( packet[ 28 ] ) +'.'+  str( packet[ 29 ] );
-		self.adr_dest = str( packet[ 30 ] ) +'.'+ str( packet[ 31 ] ) +'.'+ str( packet[ 32 ] ) +'.'+  str( packet[ 33 ] );
-
 		if  two_byte_num( packet[ 12 ], packet[ 13 ] ) == 2048 and byte_part( packet[ 14 ], 1 ) == 4 :
 			# here is ipv4
 			if packet[ 23 ] == 1:
@@ -197,9 +193,15 @@ class Processing_pcap( Processing_main ):
 			else:
 				print( 'warning: odd packet' );
 				return 0;
+			# ip addresses
+			self.adr_source = str( packet[ 26 ] ) +'.'+ str( packet[ 27 ] ) +'.'+ str( packet[ 28 ] ) +'.'+  str( packet[ 29 ] );
+			self.adr_dest = str( packet[ 30 ] ) +'.'+ str( packet[ 31 ] ) +'.'+ str( packet[ 32 ] ) +'.'+  str( packet[ 33 ] );
 			return 1;
 		elif two_byte_num( packet[ 12 ], packet[ 13 ] ) == 2054:
 			#arp
+			#arp addresses
+			self.adr_source = str( packet[ 28 ] ) +'.'+ str( packet[ 29 ] ) +'.'+ str( packet[ 30 ] ) +'.'+  str( packet[ 31 ] );
+			self.adr_dest = str( packet[ 38 ] ) +'.'+ str( packet[ 39 ] ) +'.'+ str( packet[ 40 ] ) +'.'+  str( packet[ 41 ] );
 			self.last_protocol = 'arp';
 			return 1
 		else:
@@ -257,21 +259,22 @@ class Processing_pcap( Processing_main ):
 		self.output.write( 'min ' + self._kbyte_conver( size_min ) + '\n' );
 		self.output.write( 'max ' + self._kbyte_conver( size_max ) + '\n' );
 		if  packet_count:
-			self.output.write( 'avr 0\n' );
+			self.output.write( 'avg ' + self._kbyte_conver( size_all / packet_count ) + '\n' );
 		else:
-			self.output.write( 'avr ' + self._kbyte_conver( size_all / packet_count ) + '\n' );
+			self.output.write( 'avg 0\n' );
 
-		self.output.write( '# (k) bytes in each protocol\n' );	
+		self.output.write( '# [kilo]bytes in each protocol\n' );	
 		self.output.write( '<protocol_usage>\n' );
 		for i in protocol_BCount:
 			self.output.write( str( i ) + ' ' + self._kbyte_conver( protocol_BCount[ i ] ) + '\n' );
 
 		self.output.write( '<dump_stats>\n' );
+		self.output.write( '# number of unerecognized packets and number of tcp connections\n' );
 		self.output.write( 'odd_packets ' + str( packet_odd ) + '\n' );
 		self.output.write( 'tcp_connections ' + str( self.tcp_connections ) + '\n' )
 
 		self.output.write( '# summary of communicating IP address through each protocol\n' );
-		self.output.write( '# sending IP | receiver IP | protocol | amount of data (k)B\n' );
+		self.output.write( '# sending IP | receiver IP | protocol | amount of data [k]B\n' );
 		self.output.write( '<com_sum>\n' );
 		for a in com_sum:
                         self.output.write( str( a ) +  self._kbyte_conver( com_sum[ a ] ) + '\n' );
