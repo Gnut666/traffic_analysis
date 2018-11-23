@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import sys
+import abc
 
 def include( filename ):
 	if os.path.exists( filename ):
@@ -9,6 +10,9 @@ def include( filename ):
 # files to include
 include( './classes/Open_file.py' );
 include( './classes/Load_file.py' );
+
+#from classes/Open_file.py import *
+from Load_file import *
 
 # functions
 def num_bin( byte_num, endi ):
